@@ -2,49 +2,32 @@ import os
 import asyncpg
 import datetime
 import asyncio
-from pypika import Query
 import logging
+from pypika import Query
+from sanic import Sanic, text
 
 logging.basicConfig(level=logging.INFO)
 
 
-q = Query.from_("ping").select("id")
+app = Sanic("tirekick")
+
+app.config.DATABASE_URL = os.environ.get("DATABASE_URL")
 
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
-
-
-async def main():
-    # Establish a connection to an existing database named "test"
-    # as a "postgres" user.
+@app.get("/")
+async def handler(request):
+    q = Query.from_("ping").select("id")
     logging.info("Connecting to database")
-    conn = await asyncpg.connect(DATABASE_URL)
-    # Execute a statement to create a new table.
-    # await conn.execute(q.get_sql())
-
-    # Insert a record into the created table.
-    # await conn.execute(
-    #     """
-    #     INSERT INTO users(name, dob) VALUES($1, $2)
-    # """,
-    #     "Bob",
-    #     datetime.date(1984, 3, 1),
-    # )
-
-    # Select a row from the table.
+    conn = await asyncpg.connect(app.config.DATABASE_URL)
     logging.info("Fetching database row")
     row = await conn.fetchrow(q.get_sql())
-    print(row)
     logging.info(row)
-
-    # *row* now contains
-    # asyncpg.Record(id=1, name='Bob', dob=datetime.date(1984, 3, 1))
-
-    # Close the connection.
     logging.info("Closing database connection")
     await conn.close()
 
+    return text(str(row))
+
 
 logging.info("Starting up 🤘")
-
-asyncio.get_event_loop().run_until_complete(main())
+app.run(host="0.0.0.0", port=8080, access_log=True)
+# asyncio.get_event_loop().run_until_complete(main())
